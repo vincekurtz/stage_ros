@@ -300,6 +300,7 @@ StageNode::poseReceived(int idx, const boost::shared_ptr<geometry_msgs::Pose con
     pose.y = msg->position.y;
     pose.z = 0;
     pose.a = yaw;
+    this->positionmodels[idx]->SetStall(false);   //Ensure we're not still crashed in the new position
     this->positionmodels[idx]->SetPose(pose);
 }
 
