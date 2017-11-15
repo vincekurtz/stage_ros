@@ -48,6 +48,7 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Int8.h>
 #include <rosgraph_msgs/Clock.h>
 
 #include <std_srvs/Empty.h>
@@ -62,6 +63,7 @@
 #define BASE_SCAN "base_scan"
 #define BASE_POSE_GROUND_TRUTH "base_pose_ground_truth"
 #define CMD_VEL "cmd_vel"
+#define IS_CRASHED "is_crashed"
 
 // Our node
 class StageNode
@@ -90,6 +92,7 @@ private:
         //ros publishers
         ros::Publisher odom_pub; //one odom
         ros::Publisher ground_truth_pub; //one ground truth
+        ros::Publisher stall_pub;   // one crash/stall indicator
 
         std::vector<ros::Publisher> image_pubs; //multiple images
         std::vector<ros::Publisher> depth_pubs; //multiple depths
@@ -361,6 +364,7 @@ StageNode::SubscribeModels()
 		 new_robot->cameramodels.size() );
 
         new_robot->odom_pub = n_.advertise<nav_msgs::Odometry>(mapName(ODOM, r, static_cast<Stg::Model*>(new_robot->positionmodel)), 10);
+        new_robot->stall_pub = n_.advertise<std_msgs::Int8>(mapName(IS_CRASHED, r, static_cast<Stg::Model*>(new_robot->positionmodel)), 10);
         new_robot->ground_truth_pub = n_.advertise<nav_msgs::Odometry>(mapName(BASE_POSE_GROUND_TRUTH, r, static_cast<Stg::Model*>(new_robot->positionmodel)), 10);
         new_robot->cmdvel_sub = n_.subscribe<geometry_msgs::Twist>(mapName(CMD_VEL, r, static_cast<Stg::Model*>(new_robot->positionmodel)), 10, boost::bind(&StageNode::cmdvelReceived, this, r, _1));
 
@@ -518,13 +522,16 @@ StageNode::WorldCallback()
         odom_msg.twist.twist.linear.y = v.y;
         odom_msg.twist.twist.angular.z = v.a;
 
-        //@todo Publish stall on a separate topic when one becomes available
-        //this->odomMsgs[r].stall = this->positionmodels[r]->Stall();
-        //
         odom_msg.header.frame_id = mapName("odom", r, static_cast<Stg::Model*>(robotmodel->positionmodel));
         odom_msg.header.stamp = sim_time;
 
         robotmodel->odom_pub.publish(odom_msg);
+
+        // Publish stall on a separate topic
+        //ROS_INFO("Stalled status: %d", robotmodel->positionmodel->Stalled());
+        std_msgs::Int8 stall_status;
+        stall_status.data = robotmodel->positionmodel->Stalled();
+        robotmodel->stall_pub.publish(stall_status);
 
         // broadcast odometry transform
         tf::Quaternion odomQ;
