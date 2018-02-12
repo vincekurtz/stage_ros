@@ -10,19 +10,32 @@ find_package(catkin REQUIRED
     std_msgs
     std_srvs
     tf
+    message_generation
 )
 
 find_package(Boost REQUIRED COMPONENTS system thread)
 
 find_package(stage REQUIRED)
 
+add_message_files(
+  FILES Stall.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs 
+)
+
+catkin_package(
+  INCLUDE_DIRS ${catkin_INCLUDE_DIRS}
+  CATKIN_DEPENDS message_runtime
+)
+
 include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
   ${STAGE_INCLUDE_DIRS}
 )
-
-catkin_package()
 
 # Declare a cpp executable
 add_executable(stageros src/stageros.cpp)
@@ -36,9 +49,15 @@ target_link_libraries(stageros
   ${STAGE_LIBRARIES}
   ${${PROJECT_NAME}_extra_libs}
 )
+add_dependencies(stageros stage_ros_generate_messages_cpp)
 if(catkin_EXPORTED_TARGETS)
   add_dependencies(stageros ${catkin_EXPORTED_TARGETS})
 endif()
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(stageros
+  ${catkin_LIBRARIES}
+)
 
 ## Install
 
